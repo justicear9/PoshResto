@@ -166,6 +166,27 @@
                         </x-select>
                     </div>
                 </div>
+
+                {{-- Delivery Date & Time (allow back-dating for Bolt Food history) --}}
+                @php
+                    $currentDate = $pickupDate ?? now()->format(restaurant()->date_format);
+                    $currentTime = $pickupTime ?? now()->format('H:i');
+                @endphp
+                <div class="flex items-end gap-2 pb-2" id="delivery-datetime-container">
+                    <div class="relative flex-1">
+                        <x-datepicker
+                            wire:model.live="pickupDate"
+                            value="{{ $currentDate }}"
+                            class="pl-4 pr-5 py-2 text-lg text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500 w-full" />
+                    </div>
+
+                    <div class="relative flex-1" style="overflow: visible;">
+                        <x-time-picker
+                            wire:model.live="pickupTime"
+                            value="{{ $currentTime }}"
+                        />
+                    </div>
+                </div>
             @endif
 
             @if ($orderType == 'pickup')

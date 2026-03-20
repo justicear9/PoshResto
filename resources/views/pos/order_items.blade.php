@@ -100,6 +100,36 @@
                 </div>
             @endif
 
+            @if ($orderType == 'delivery' && user_can('Update Order'))
+                @php
+                    $currentDate = $pickupDate ?? now()->format(restaurant()->date_format);
+                    $currentTime = $pickupTime ?? now()->format('H:i');
+                @endphp
+                <div class="gap-2 flex justify-between items-center mb-2 w-full">
+                    <div class="inline-flex items-center gap-2 w-full">
+                        <label for="delivery_datetime" class="text-sm text-gray-600 dark:text-gray-300">
+                            @lang('modules.order.deliveryDateTime'):
+                        </label>
+
+                        <div class="flex items-end gap-2 flex-1">
+                            <div class="relative flex-1">
+                                <x-datepicker
+                                    wire:model.live="pickupDate"
+                                    value="{{ $currentDate }}"
+                                    class="pl-4 pr-5 py-2 text-lg text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500 w-full" />
+                            </div>
+
+                            <div class="relative flex-1" style="overflow: visible;">
+                                <x-time-picker
+                                    wire:model.live="pickupTime"
+                                    value="{{ $currentTime }}"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             @if ($orderType == 'pickup')
                 <div class="gap-2 flex justify-between items-center mb-2 w-full">
                     <div class="inline-flex items-center gap-2 w-full">

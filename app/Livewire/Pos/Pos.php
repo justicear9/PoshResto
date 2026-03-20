@@ -389,7 +389,9 @@ class Pos extends Component
             $this->orderStatus = $order->order_status;
             $this->orderTypeId = $order->order_type_id;
             $this->orderType = $order->order_type;
-            $this->deliveryDateTime = $order->pickup_date;
+            // For pickup orders, `pickup_date` is used.
+            // For delivery back-dating (Bolt Food history), fall back to the order's `date_time`.
+            $this->deliveryDateTime = $order->pickup_date ?? $order->date_time;
             $this->initializePickupDateTime();
             $this->taxMode = $order->tax_mode ?? $this->taxMode;
             $this->selectedDeliveryApp = $order->delivery_app_id;
@@ -532,6 +534,12 @@ class Pos extends Component
 
                     // Calculate total with new order type settings
                     $this->calculateTotal();
+
+                    // Ensure the scheduled datetime is derived from the UI fields
+                    // (used when saving: pickup uses pickup_date; delivery uses date_time).
+                    if ($this->pickupDate && $this->pickupTime) {
+                        $this->updateDeliveryDateTime();
+                    }
 
                     // Display success notification for better UX
                     $platformName = $this->selectedDeliveryApp && $this->selectedDeliveryApp !== 'default'
@@ -810,7 +818,8 @@ class Pos extends Component
 
                 // Check if the time is in the past
                 $minDateTime = now($timezone)->addMinute();
-                $this->isPastTime = $dateTime->lt($minDateTime);
+                // Only block actions for pickup. Delivery history can be back-dated.
+                $this->isPastTime = $this->orderType === 'pickup' ? $dateTime->lt($minDateTime) : false;
             } catch (\Exception $e) {
                 // Fallback to current date/time if parsing fails
                 $this->pickupDate = now(restaurant()->timezone)->format(global_setting()->date_format ?? 'd-m-Y');
@@ -866,16 +875,21 @@ class Pos extends Component
 
                 if ($selectedDate->equalTo($today)) {
                     // Validate that the selected time is not in the past (only for today)
-                    // Time picker is minute-precision (HH:MM), so validate at minute granularity too.
-                    $minDateTime = now($timezone)->addMinute()->startOfMinute();
-                    if ($parsedDate->lt($minDateTime)) {
-                        // Auto-correct to the minimum allowed time so the first click works.
-                        $parsedDate = $minDateTime->copy();
-                        $this->pickupDate = $parsedDate->format(global_setting()->date_format ?? 'd-m-Y');
-                        $this->pickupTime = $parsedDate->format('H:i');
-                        $this->deliveryDateTime = $parsedDate->copy()->utc()->format('Y-m-d H:i:s');
-                        $this->isPastTime = false;
+                    if ($this->orderType === 'pickup') {
+                        // Time picker is minute-precision (HH:MM), so validate at minute granularity too.
+                        $minDateTime = now($timezone)->addMinute()->startOfMinute();
+                        if ($parsedDate->lt($minDateTime)) {
+                            // Auto-correct to the minimum allowed time so the first click works.
+                            $parsedDate = $minDateTime->copy();
+                            $this->pickupDate = $parsedDate->format(global_setting()->date_format ?? 'd-m-Y');
+                            $this->pickupTime = $parsedDate->format('H:i');
+                            $this->deliveryDateTime = $parsedDate->copy()->utc()->format('Y-m-d H:i:s');
+                            $this->isPastTime = false;
+                        } else {
+                            $this->isPastTime = false;
+                        }
                     } else {
+                        // Delivery entries can be back-dated (e.g. Bolt Food history).
                         $this->isPastTime = false;
                     }
                 } else {
@@ -2956,7 +2970,7 @@ class Pos extends Component
             $orderData = [
                 'order_number' => $action === 'draft' ? null : ($orderNumberData['order_number'] ?? null),
                 'formatted_order_number' => $action === 'draft' ? null : ($orderNumberData['formatted_order_number'] ?? null),
-                'date_time' => now(),
+                'date_time' => $this->orderType === 'delivery' ? $this->deliveryDateTime : now(),
                 'table_id' => $this->tableId,
                 'number_of_pax' => $this->noOfPax !== null && $this->noOfPax !== '' ? (int) $this->noOfPax : ($this->orderType === 'dine_in' ? 1 : null),
                 'discount_type' => $this->loyaltyPointsRedeemed > 0 ? null : $this->discountType,
@@ -3057,7 +3071,7 @@ class Pos extends Component
             $existingRedeemedPoints = $order->loyalty_points_redeemed ?? 0;
 
             $updateData = [
-                'date_time' => now(),
+                'date_time' => $this->orderType === 'delivery' ? $this->deliveryDateTime : now(),
                 'order_type' => $this->orderType,
                 'order_type_id' => $this->orderTypeId,
                 'custom_order_type_name' => $orderTypeName,

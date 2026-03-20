@@ -502,6 +502,7 @@ return [
         'amountDue' => 'Amount Due',
         'pleaseReviewOrder' => 'Please review your order and proceed to payment.',
         'pickUpDateTime' => 'Pickup Date & Time',
+        'deliveryDateTime' => 'Delivery Date & Time',
         'pickupDate' => 'Pickup Date:',
         'orderDate' => 'Order Date:',
         'selectPickupDateTime' => 'Select Pickup Date - Time',
