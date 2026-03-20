@@ -1,4 +1,4 @@
-<div class="h-screen w-screen overflow-hidden" @if(!pusherSettings()->is_enabled_pusher_broadcast) wire:poll.2s @endif>
+<div class="h-screen w-screen overflow-hidden">
     <div class="grid grid-cols-2 h-full">
         <!-- Preparing (left) -->
         <div class="bg-gray-700 text-white h-full flex flex-col">

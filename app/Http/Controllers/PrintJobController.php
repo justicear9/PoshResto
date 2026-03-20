@@ -79,7 +79,12 @@ class PrintJobController extends Controller
         $jobs = PrintJob::with('printer:id,name,printing_choice,print_format,share_name,type')
             ->where('status', 'pending')
             ->where('branch_id', $branch->id)
+            // If you use browser printing (not direct desktop printing), ignore jobs for non-desktop printers.
+            ->whereHas('printer', function ($q) {
+                $q->where('printing_choice', 'directPrint');
+            })
             ->oldest()
+            ->limit(10)
             ->get();
 
         if ($jobs->isEmpty()) {
