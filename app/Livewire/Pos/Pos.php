@@ -848,7 +848,7 @@ class Pos extends Component
         if ($this->pickupDate && $this->pickupTime) {
             try {
                 // Parse the date using restaurant date format
-                $dateFormat = global_setting()->date_format ?? 'd-m-Y' ?? 'd-m-Y';
+                $dateFormat = global_setting()->date_format ?? 'd-m-Y';
                 $timezone = restaurant()->timezone ?? config('app.timezone');
                 $parsedDate = \Carbon\Carbon::createFromFormat($dateFormat, $this->pickupDate, $timezone);
 
@@ -856,7 +856,7 @@ class Pos extends Component
                 [$hours, $minutes] = explode(':', $this->pickupTime);
                 $parsedDate->setTime((int)$hours, (int)$minutes, 0);
 
-                // Format for database (Y-m-d H:i:s format)
+                // Default: set for database (Y-m-d H:i:s format)
                 $this->deliveryDateTime = $parsedDate->copy()->utc()->format('Y-m-d H:i:s');
 
                 // Only validate time if the selected date is today
@@ -866,14 +866,15 @@ class Pos extends Component
 
                 if ($selectedDate->equalTo($today)) {
                     // Validate that the selected time is not in the past (only for today)
-                    $minDateTime = now($timezone)->addMinute();
+                    // Time picker is minute-precision (HH:MM), so validate at minute granularity too.
+                    $minDateTime = now($timezone)->addMinute()->startOfMinute();
                     if ($parsedDate->lt($minDateTime)) {
-                        $this->pickupTime = now($timezone)->addMinute();
-                        // $this->isPastTime = true;
-                        // $this->deliveryDateTime = $minDateTime->format('Y-m-d H:i:s');
-                        // $this->pickupDate = $minDateTime->format(global_setting()->date_format ?? 'd-m-Y');
-                        // $this->pickupTime = $minDateTime->format('H:i');
-                        // $this->addError('pickupDateTime', 'Please select a future time');
+                        // Auto-correct to the minimum allowed time so the first click works.
+                        $parsedDate = $minDateTime->copy();
+                        $this->pickupDate = $parsedDate->format(global_setting()->date_format ?? 'd-m-Y');
+                        $this->pickupTime = $parsedDate->format('H:i');
+                        $this->deliveryDateTime = $parsedDate->copy()->utc()->format('Y-m-d H:i:s');
+                        $this->isPastTime = false;
                     } else {
                         $this->isPastTime = false;
                     }
@@ -883,10 +884,11 @@ class Pos extends Component
                 }
             } catch (\Exception $e) {
                 // If parsing fails, set to current time
-                $minDateTime = now($timezone)->addMinute();
+                $minDateTime = now($timezone)->addMinute()->startOfMinute();
                 $this->deliveryDateTime = $minDateTime->format('Y-m-d H:i:s');
                 $this->pickupDate = $minDateTime->format(global_setting()->date_format ?? 'd-m-Y');
                 $this->pickupTime = $minDateTime->format('H:i');
+                $this->isPastTime = false;
             }
         }
     }
@@ -2833,14 +2835,26 @@ class Pos extends Component
 
         // Validate pickup date/time for pickup orders - ensure it's not in the past (only for today's date)
         if ($this->orderType === 'pickup' && $action !== 'cancel' && $this->pickupDate && $this->pickupTime) {
-            // Store original values to detect if they were adjusted
-            $originalPickupDate = $this->pickupDate;
-            $originalPickupTime = $this->pickupTime;
-
             $this->updateDeliveryDateTime();
+            $timezone = restaurant()->timezone ?? config('app.timezone');
+            $dateFormat = global_setting()->date_format ?? 'd-m-Y';
+            // Compare at minute granularity to match HH:MM time picker precision.
+            $minDateTime = now($timezone)->addMinute()->startOfMinute();
 
-            // If values were adjusted, it means the original time was in the past (for today's date)
-            if ($this->pickupDate !== $originalPickupDate || $this->pickupTime !== $originalPickupTime) {
+            try {
+                $selectedDateTime = \Carbon\Carbon::createFromFormat($dateFormat, $this->pickupDate, $timezone);
+                [$hours, $minutes] = explode(':', $this->pickupTime);
+                $selectedDateTime->setTime((int)$hours, (int)$minutes, 0);
+
+                if ($selectedDateTime->lt($minDateTime)) {
+                    $this->alert('error', 'Please select a future time', [
+                        'toast' => true,
+                        'position' => 'top-end',
+                    ]);
+                    return;
+                }
+            } catch (\Exception $e) {
+                // If parsing fails, block to be safe.
                 $this->alert('error', 'Please select a future time', [
                     'toast' => true,
                     'position' => 'top-end',

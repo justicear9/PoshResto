@@ -280,7 +280,23 @@
             @if ($receiptSettings->show_branch_address)
                 <div class="restaurant-info">{!! nl2br($orderBranch->address ?? restaurant()->address ?? '') !!}</div>
             @endif
-            <div class="restaurant-info">@lang('modules.customer.phone'):<span dir="ltr" style="unicode-bidi: embed;">{{ $orderBranch->phone ?: restaurant()->phone_number }}</span></div>
+            @php
+                $__restaurantPhoneRaw = $orderBranch->phone ?: restaurant()->phone_number;
+                $__restaurantPhoneDigits = preg_replace('/\D+/', '', (string) $__restaurantPhoneRaw);
+                $__restaurantPhoneFormatted = $__restaurantPhoneDigits;
+
+                // Ghana-style formatting: show local numbers starting with `0` (e.g. 25... -> 025...).
+                if (!empty($__restaurantPhoneDigits)) {
+                    if (str_starts_with($__restaurantPhoneDigits, '0')) {
+                        $__restaurantPhoneFormatted = $__restaurantPhoneDigits;
+                    } elseif (str_starts_with($__restaurantPhoneDigits, '233') && strlen($__restaurantPhoneDigits) > 3) {
+                        $__restaurantPhoneFormatted = '0' . substr($__restaurantPhoneDigits, 3);
+                    } else {
+                        $__restaurantPhoneFormatted = '0' . $__restaurantPhoneDigits;
+                    }
+                }
+            @endphp
+            <div class="restaurant-info">@lang('modules.customer.phone'):<span dir="ltr" style="unicode-bidi: embed;">{{ $__restaurantPhoneFormatted ?: $__restaurantPhoneRaw }}</span></div>
             @if ($receiptSettings->show_tax)
                 @if (empty($orderBranch->cr_number) && empty($orderBranch->vat_number))
                     @foreach ($taxDetails as $taxDetail)

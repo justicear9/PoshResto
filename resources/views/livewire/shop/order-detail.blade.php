@@ -1015,7 +1015,11 @@
                                     </div>
                                     <div>
                                         <p class="font-medium text-gray-900 dark:text-white">
-                                            {{ ucwords(str_replace('_', ' ', $payment->payment_method)) }}
+                                            @if($payment->payment_method === 'upi')
+                                                {{ __('modules.order.upi') }}
+                                            @else
+                                                {{ ucwords(str_replace('_', ' ', $payment->payment_method)) }}
+                                            @endif
                                         </p>
                                         <p class="text-sm text-gray-500 dark:text-gray-400">
                                             {{ $payment->created_at->timezone(timezone())->format(dateFormat() . ' ' . timeFormat()) }}

@@ -223,7 +223,23 @@
             @endif
             <div class="restaurant-name">{{ $orderBranch->name ?? restaurant()->name }}</div>
             <div class="restaurant-info">{{ $orderBranch->address ?? '' }}</div>
-            <div class="restaurant-info">@lang('modules.customer.phone'): {{ $orderBranch->phone ?: restaurant()->phone_number }}</div>
+            @php
+                $__restaurantPhoneRaw = $orderBranch->phone ?: restaurant()->phone_number;
+                $__restaurantPhoneDigits = preg_replace('/\D+/', '', (string) $__restaurantPhoneRaw);
+                $__restaurantPhoneFormatted = $__restaurantPhoneDigits;
+
+                // Ghana-style formatting: show local numbers starting with `0` (e.g. 25... -> 025...).
+                if (!empty($__restaurantPhoneDigits)) {
+                    if (str_starts_with($__restaurantPhoneDigits, '0')) {
+                        $__restaurantPhoneFormatted = $__restaurantPhoneDigits;
+                    } elseif (str_starts_with($__restaurantPhoneDigits, '233') && strlen($__restaurantPhoneDigits) > 3) {
+                        $__restaurantPhoneFormatted = '0' . substr($__restaurantPhoneDigits, 3);
+                    } else {
+                        $__restaurantPhoneFormatted = '0' . $__restaurantPhoneDigits;
+                    }
+                }
+            @endphp
+            <div class="restaurant-info">@lang('modules.customer.phone'): {{ $__restaurantPhoneFormatted ?: $__restaurantPhoneRaw }}</div>
             @if ($receiptSettings->show_tax)
                 @if (empty($orderBranch->cr_number) && empty($orderBranch->vat_number))
                     @foreach ($taxDetails as $taxDetail)
@@ -515,7 +531,13 @@
                         @foreach ($order->payments as $payment)
                             <tr>
                                 <td class="qty">{{ currency_format($payment->amount, restaurant()->currency_id, false, true) }}</td>
-                                <td class="description">{{ ucwords(str_replace('_', ' ', $payment->payment_method)) }}</td>
+                                <td class="description">
+                                    @if($payment->payment_method === 'upi')
+                                        {{ __('modules.order.upi') }}
+                                    @else
+                                        {{ ucwords(str_replace('_', ' ', $payment->payment_method)) }}
+                                    @endif
+                                </td>
                                 <td class="price">
                                     @if($payment->payment_method != 'due')
                                         {{ $payment->created_at->timezone(timezone())->translatedFormat(dateFormat() . ' ' . timeFormat()) }}
