@@ -40,6 +40,17 @@ Whether you're running a single restaurant or managing multiple locations, Table
 -   **🔔 SMS Notifications** - Automated SMS notifications for orders and updates
 -   **🏢 Multi-POS Support** - Multiple point-of-sale locations management
 
+---
+## PoshResto (Ghana context)
+This repository is a local/custom build of **TableTrack** (“PoshResto”) focused on POS and receipt usability for Ghana.
+
+Notes on key UI behavior:
+- **MoMo display in POS**: the payment method stored as `upi` is displayed as **MoMo** in the POS UI (label only; the underlying key stays `upi`).
+- **Receipt phone formatting**: the restaurant phone number printed on receipts is auto-formatted to start with `0` (e.g. `25...` -> `025...`, `233...` -> `0...`).
+- **Pickup time validation stability**: pickup time validation is minute-precision so the POS doesn’t require a “second click” to pass.
+
+For how these behaviors are wired end-to-end, see `CODEBASE_INDEX.md`.
+
 ## 🛠️ Technology Stack
 
 -   **Framework:** Laravel
@@ -66,6 +77,20 @@ Whether you're running a single restaurant or managing multiple locations, Table
 ## 📖 Documentation
 
 Comprehensive documentation is included with your purchase. Check the `documentation/` folder for detailed setup and usage instructions.
+
+## Docs in this repo
+- `CODEBASE_INDEX.md` — reader’s guide to the codebase (architecture, routing, key flows, and indexing tables)
+
+## Local setup quick notes
+For local development with XAMPP-style setups:
+- Set up `.env` (copy from `.env.example`)
+- Run `composer install`
+- Run `php artisan key:generate`
+- Run `php artisan migrate`
+- Build frontend assets (`npm install` + your dev/build workflow)
+
+If the UI feels slow on actions that trigger notifications/printing:
+- Consider setting `QUEUE_CONNECTION=database` (or `redis`) and running a queue worker (`php artisan queue:work`)
 
 ## 🎨 Modules
 

@@ -4253,6 +4253,17 @@ class Pos extends Component
                 case 'payment':
                     // CRITICAL: Refresh order to ensure we have latest total (especially after loyalty redemption)
                     $order->refresh();
+
+                    // POS: "Bill & Payment" means we've already completed prior steps.
+                    // Jump the progress bar straight to the final stage.
+                    $this->orderStatus = 'delivered';
+                    Order::where('id', $order->id)->update([
+                        'order_status' => 'delivered',
+                    ]);
+
+                    // Since the order is considered delivered, free the table immediately (if applicable).
+                    $tableStatus = 'available';
+
                     $this->dispatch('showPaymentModal', id: $order->id);
                     break;
                 case 'print':

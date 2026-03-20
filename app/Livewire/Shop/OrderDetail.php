@@ -2349,6 +2349,8 @@ class OrderDetail extends Component
         $order = Order::findOrFail($id);
         $order->update([
             'status' => 'pending_verification',
+            // POS behavior: payment completion implies all prior steps are done.
+            'order_status' => 'delivered',
         ]);
 
 
